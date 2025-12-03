@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Django
+*.sqlite3
+*.log
+local_settings.py
+
+# VS Code
+.vscode/
+
+# Environment
+venv/
+ENV/
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test & Coverage
+htmlcov/
+.coverage
+.tox/
+
+# Node
+node_modules/
+
+# Misc
+*.bak
+*.swp
+*.swo
+
+# Git
+.git/
+
+# Ignore migrations cache
+**/migrations/__pycache__/
+
+# Ignore compiled files
+*.so
+
+# Ignore Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
