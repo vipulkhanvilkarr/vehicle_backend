@@ -73,7 +73,7 @@ class LoginView(APIView):
         username = request.data.get("username")
         password = request.data.get("password")
         if not username or not password:
-            return Response({"error": "username and password required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Username and password required."}, status=status.HTTP_400_BAD_REQUEST)
         user = authenticate(username=username, password=password)
         if user is not None:
             AuthToken.objects.filter(user=user, is_active=True).update(is_active=False)
@@ -82,31 +82,26 @@ class LoginView(APIView):
             return Response(
                 {
                     "token": token_key,
-                    "user_id": user.pk,
-                    "username": user.username,
-                    "role": getattr(user, "role", None),
+                    "message": "Login successful."
                 },
                 status=status.HTTP_200_OK,
             )
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"message": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def post(self, request):
-        try:
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Token "):
-                token_key = auth_header.split(" ", 1)[1]
-                try:
-                    token = AuthToken.objects.get(key=token_key, is_active=True)
-                    token.deactivate()
-                except AuthToken.DoesNotExist:
-                    pass
-            return Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
-        except Exception as exc:
-            logger.exception("Logout failed: %s", exc)
-            return Response({"error": "Logout failed", "details": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Token "):
+            token_key = auth_header.split(" ", 1)[1]
+            try:
+                token = AuthToken.objects.get(key=token_key, is_active=True)
+                token.deactivate()
+            except AuthToken.DoesNotExist:
+                pass
+        # Always return success, even if token is missing or invalid
+        return Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]

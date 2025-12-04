@@ -24,10 +24,11 @@ class VehicleCreateView(generics.CreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
-            return Response({"message": "Vehicle created successfully", "data": serializer.data},
-                            status=status.HTTP_201_CREATED)
+            vehicle_number = serializer.validated_data.get('vehicle_number', '')
+            return Response({
+                "message": f"Vehicle number {vehicle_number} created successfully"
+            }, status=status.HTTP_201_CREATED)
         except Exception as exc:
-            logger.exception("Failed to create vehicle: %s", exc)
             return Response({"error": "Failed to create vehicle", "details": str(exc)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -40,7 +41,6 @@ class VehicleListView(generics.ListAPIView):
         try:
             return super().list(request, *args, **kwargs)
         except Exception as exc:
-            logger.exception("Failed to fetch vehicles: %s", exc)
             return Response({"error": "Failed to fetch vehicles", "details": str(exc)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -64,7 +64,6 @@ class VehicleDetailView(generics.RetrieveAPIView):
                 data["vehicle_type"] = VehicleTypeSerializer(vehicle_type).data
             return Response(data, status=status.HTTP_200_OK)
         except Exception as exc:
-            logger.exception("Failed to fetch vehicle: %s", exc)
             return Response({"error": "Failed to fetch vehicle", "details": str(exc)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -80,10 +79,16 @@ class VehicleUpdateView(generics.UpdateAPIView):
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
-            return Response({"message": "Vehicle updated successfully", "data": serializer.data},
-                            status=status.HTTP_200_OK)
+            updated_fields = list(request.data.keys())
+            if updated_fields:
+                field_list = ', '.join(updated_fields)
+                message = f"Vehicle field(s) {field_list} updated successfully"
+            else:
+                message = "Vehicle updated successfully"
+            return Response({
+                "message": message
+            }, status=status.HTTP_200_OK)
         except Exception as exc:
-            logger.exception("Failed to update vehicle: %s", exc)
             return Response({"error": "Failed to update vehicle", "details": str(exc)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -100,6 +105,5 @@ class VehicleDeleteView(generics.DestroyAPIView):
                 return Response({"message": "Vehicle deleted successfully"}, status=status.HTTP_200_OK)
             return response
         except Exception as exc:
-            logger.exception("Failed to delete vehicle: %s", exc)
             return Response({"error": "Failed to delete vehicle", "details": str(exc)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

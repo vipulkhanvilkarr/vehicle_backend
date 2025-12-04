@@ -1,5 +1,8 @@
+
 from rest_framework import serializers
 from .models import Vehicle, User, VehicleType
+import re
+from django.utils.html import strip_tags
 
 
 # vehicle serializer
@@ -34,7 +37,6 @@ class VehicleSerializer(serializers.ModelSerializer):
     def validate_vehicle_number(self, value):
         # Always convert to uppercase
         value = value.upper()
-        import re
         # Must be alphanumeric and contain a digit group (1-4 digits) anywhere
         if not re.match(r'^[A-Z0-9]+$', value):
             raise serializers.ValidationError(
@@ -56,6 +58,18 @@ class VehicleSerializer(serializers.ModelSerializer):
         if 'vehicle_number' in data and isinstance(data['vehicle_number'], str):
             data['vehicle_number'] = data['vehicle_number'].upper()
         return super().to_internal_value(data)
+
+    def create(self, validated_data):
+        validated_data['vehicle_model'] = strip_tags(validated_data.get('vehicle_model', ''))
+        validated_data['vehicle_description'] = strip_tags(validated_data.get('vehicle_description', ''))
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if 'vehicle_model' in validated_data:
+            validated_data['vehicle_model'] = strip_tags(validated_data['vehicle_model'])
+        if 'vehicle_description' in validated_data:
+            validated_data['vehicle_description'] = strip_tags(validated_data['vehicle_description'])
+        return super().update(instance, validated_data)
 #user serializer
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
@@ -65,6 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "password", "role"]
 
     def create(self, validated_data):
+        validated_data['username'] = strip_tags(validated_data.get('username', ''))
         password = validated_data.pop("password")
         user = User(**validated_data)
         user.set_password(password)
@@ -74,13 +89,12 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # handle password if provided
         password = validated_data.pop("password", None)
-
+        if 'username' in validated_data:
+            validated_data['username'] = strip_tags(validated_data['username'])
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         if password:
             instance.set_password(password)
-
         instance.save()
         return instance
 
