@@ -1,5 +1,5 @@
 import logging
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -7,6 +7,23 @@ from rest_framework.views import APIView
 from .models import User, AuthToken
 from .serializers import UserSerializer
 from .permissions import SuperAdminOnly
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def create_superuser(request):
+    if request.method == "POST":
+        # Change these values before deploying!
+        username = "admin"
+        email = "admin@example.com"
+        password = "YourStrongPassword"
+        User = get_user_model()
+        if not User.objects.filter(username=username).exists():
+            User.objects.create_superuser(username=username, email=email, password=password)
+            return JsonResponse({"status": "success", "message": "Superuser created"})
+        else:
+            return JsonResponse({"status": "error", "message": "User already exists"})
+    return JsonResponse({"status": "error", "message": "Invalid request"}, status=400)
 
 # user view 
 class UserListView(generics.ListAPIView):
