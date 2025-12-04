@@ -6,7 +6,8 @@ from .models import Vehicle, VehicleType
 from .serializers import VehicleSerializer, VehicleTypeSerializer
 from .permissions import RoleBasedCRUD, SuperAdminOnly
 
-logger = logging.getLogger(__name__)
+
+
 
 class VehicleTypeListView(generics.ListAPIView):
     queryset = VehicleType.objects.all()

@@ -9,6 +9,7 @@ class VehicleTypeSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
+
 class VehicleSerializer(serializers.ModelSerializer):
 
     vehicle_type = serializers.PrimaryKeyRelatedField(queryset=VehicleType.objects.all(), required=True)

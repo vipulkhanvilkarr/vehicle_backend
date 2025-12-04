@@ -8,8 +8,7 @@ from .models import User, AuthToken
 from .serializers import UserSerializer
 from .permissions import SuperAdminOnly
 
-logger = logging.getLogger(__name__)
-
+# user view 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all().order_by('-id')
     serializer_class = UserSerializer

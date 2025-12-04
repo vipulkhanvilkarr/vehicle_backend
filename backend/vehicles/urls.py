@@ -4,6 +4,8 @@ from rest_framework.authtoken.views import obtain_auth_token
 from .user_views import DeleteUserView, UpdateUserView, UserCreateView, CurrentUserView, LoginView, LogoutView, UserListView
 from .vehicle_views import VehicleCreateView, VehicleDeleteView, VehicleListView, VehicleUpdateView, VehicleTypeListView, VehicleDetailView
 
+
+# all routes are here 
 urlpatterns = [
 
     path("auth/login/", LoginView.as_view(), name="api_login"),
