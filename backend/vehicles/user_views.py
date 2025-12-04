@@ -13,13 +13,21 @@ from django.views.decorators.csrf import csrf_exempt
 @csrf_exempt
 def create_superuser(request):
     if request.method == "POST":
-        # Change these values before deploying!
-        username = "admin"
-        email = "admin@example.com"
-        password = "YourStrongPassword"
+        import json
+        try:
+            data = json.loads(request.body.decode())
+            email = data.get("email")
+            password = data.get("password")
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": f"Invalid JSON: {str(e)}"}, status=400)
+
+        if not email or not password:
+            return JsonResponse({"status": "error", "message": "Email and password are required."}, status=400)
+
         User = get_user_model()
-        if not User.objects.filter(username=username).exists():
-            User.objects.create_superuser(username=username, email=email, password=password)
+        if not User.objects.filter(email=email).exists():
+            # Use email as username
+            User.objects.create_superuser(email=email, username=email, password=password)
             return JsonResponse({"status": "success", "message": "Superuser created"})
         else:
             return JsonResponse({"status": "error", "message": "User already exists"})
@@ -46,7 +54,16 @@ class UserCreateView(generics.CreateAPIView):
                 {"detail": "Cannot create another SUPER_ADMIN from API"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        return super().create(request, *args, **kwargs)
+        email = data.get("email")
+        password = data.get("password")
+        if not email or not password:
+            return Response({"detail": "Email and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+        data["username"] = email  # Use email as username
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class UpdateUserView(generics.UpdateAPIView):
     queryset = User.objects.all()
