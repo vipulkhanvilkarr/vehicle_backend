@@ -1,10 +1,8 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+
 from rest_framework.authtoken.views import obtain_auth_token  
 from .user_views import DeleteUserView, UpdateUserView, UserCreateView, CurrentUserView, LoginView, LogoutView, UserListView
 from .vehicle_views import VehicleCreateView, VehicleDeleteView, VehicleListView, VehicleUpdateView, VehicleTypeListView, VehicleDetailView
-
-router = DefaultRouter()
 
 urlpatterns = [
 
@@ -25,7 +23,4 @@ urlpatterns = [
     path("vehicles/<int:pk>/update/", VehicleUpdateView.as_view(), name="vehicle_update"), 
     path("vehicles/<int:pk>/delete/", VehicleDeleteView.as_view(), name="vehicle_delete"),
     path("vehicle-types/", VehicleTypeListView.as_view(), name="vehicle_type_list"),
-
-
-    path("", include(router.urls)),
 ]
