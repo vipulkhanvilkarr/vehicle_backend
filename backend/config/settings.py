@@ -149,4 +149,5 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CMS_SYNC_SECRET = os.getenv('CMS_SYNC_SECRET', '')
+SETTINGS_SECRET = os.getenv("SETUP_SECRET", "")
+

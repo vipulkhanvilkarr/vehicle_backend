@@ -18,57 +18,47 @@ def create_superuser(request):
     User = get_user_model()
 
     if User.objects.filter(is_superuser=True).exists():
-        return JsonResponse(
-            {"detail": "Superuser already exists"},
-            status=400,
-        )
+        @csrf_exempt
+        def create_superuser(request):
+            if request.method != "POST":
+                return JsonResponse({"detail": "Method not allowed"}, status=405)
 
-    expected_secret = getattr(settings, "SETUP_SECRET", None)
+            User = get_user_model()
 
-    try:
-        data = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+            # Safety: if a superuser already exists, do NOT create another
+            if User.objects.filter(is_superuser=True).exists():
+                return JsonResponse({"detail": "Superuser already exists"}, status=400)
 
-    email = data.get("email")
-    password = data.get("password")
-    secret = data.get("secret")
+            expected_secret = getattr(settings, "SETUP_SECRET", None)
 
-    if expected_secret and secret != expected_secret:
-        return JsonResponse({"detail": "Forbidden"}, status=403)
+            try:
+                data = json.loads(request.body.decode() if request.body else "{}")
+            except Exception:
+                return JsonResponse({"detail": "Invalid JSON"}, status=400)
 
-    if not email or not password:
-        return JsonResponse(
-            {"detail": "Email and password are required"},
-            status=400,
-        )
+            username = data.get("username")
+            email = data.get("email") or username
+            password = data.get("password")
+            secret = data.get("secret")
 
-    # Use email as username
-    user = User.objects.create_superuser(
-        username=email,
-        email=email,
-        password=password,
-    )
+            if expected_secret and secret != expected_secret:
+                return JsonResponse({"detail": "Forbidden"}, status=403)
 
-    # Optional: set role to SUPER_ADMIN
-    if hasattr(User, "Role"):
-        user.role = User.Role.SUPER_ADMIN
-        user.save(update_fields=["role"])
+            if not email or not password:
+                return JsonResponse({"detail": "Email and password are required"}, status=400)
 
-    return JsonResponse(
-        {"detail": "Superuser created successfully"},
-        status=201,
-    )
+            user = User.objects.create_superuser(
+                username=email,
+                email=email,
+                password=password,
+            )
 
+            # Set role to SUPER_ADMIN if your model has Role
+            if hasattr(user, "role") and hasattr(User, "Role"):
+                user.role = User.Role.SUPER_ADMIN
+                user.save(update_fields=["role"])
 
-# user view 
-class UserListView(generics.ListAPIView):
-    queryset = User.objects.all().order_by('-id')
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, SuperAdminOnly]
-
-class UserCreateView(generics.CreateAPIView):
-    serializer_class = UserSerializer
+            return JsonResponse({"detail": "Superuser created successfully"}, status=201)
     permission_classes = [IsAuthenticated, SuperAdminOnly]
 
     def get_queryset(self):
