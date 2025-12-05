@@ -100,11 +100,37 @@ This Django REST API manages vehicles and users with role-based permissions. It 
 - All user-facing text fields (`vehicle_model`, `vehicle_description`) are sanitized using `django.utils.html.strip_tags` to strip any HTML tags (e.g. `<script>`).
 - On the frontend (React), all output is automatically escaped and we avoid using `dangerouslySetInnerHTML`.
 
-### IP Filtering
 
-- A custom `IPFilterMiddleware` (`vehicles/middleware.py`) is added to the Django middleware stack.
-- It reads a list of allowed IPs from the `ALLOWED_IPS` setting and returns HTTP 403 for any request coming from a non-whitelisted IP.
-- This demonstrates IP-based access control as required in the test.
+### IPFilter Middleware Fix
+
+**Problem**
+
+backend was returning:
+
+   Access denied: IP not allowed
+
+because the middleware only allowed:
+
+   ALLOWED_IPS = ["127.0.0.1", "::1"]
+
+So Render, Vercel, Postman, and real users were blocked.
+
+**Solution**
+
+updated the middleware so that:
+
+- When running in production (`DEBUG=False`), IP filtering is disabled
+- When running locally (`DEBUG=True`), only localhost is allowed
+
+This means:
+
+🟢 **Production (Render)** → Everyone can access normally
+🟡 **Local Dev** → Still protected from outside access
+
+And your `.env` now correctly has:
+
+   DEBUG=False
+   ALLOWED_IPS=
 
 ---
 For further details, see code comments and docstrings in the source files.

@@ -18,9 +18,9 @@ from .permissions import SuperAdminOnly
 logger = logging.getLogger(__name__)
 
 
-# =========================
+ 
 # One-time Superuser Creator
-# =========================
+ 
 @csrf_exempt
 def create_superuser(request):
     """
@@ -76,9 +76,9 @@ def create_superuser(request):
     )
 
 
-# =========================
+ 
 # User Views
-# =========================
+
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all().order_by("-id")
     serializer_class = UserSerializer
@@ -103,17 +103,16 @@ class UserCreateView(generics.CreateAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        email = data.get("email")
+        username = data.get("username")
         password = data.get("password")
 
-        if not email or not password:
+        if not username or not password:
             return Response(
-                {"detail": "Email and password are required."},
+                {"detail": "Username and password are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Use email as username
-        data["username"] = email
+        data["username"] = username
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -166,9 +165,9 @@ class DeleteUserView(generics.DestroyAPIView):
             )
 
 
-# =========================
+ 
 # Auth Views
-# =========================
+ 
 class LoginView(APIView):
     permission_classes = [AllowAny]
 

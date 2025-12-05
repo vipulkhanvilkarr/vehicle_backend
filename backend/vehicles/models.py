@@ -7,11 +7,11 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
 
-# ---------------------------------------------------
 # Custom User model
-# ---------------------------------------------------
+
 class User(AbstractUser):
     class Role(models.TextChoices):
+
         SUPER_ADMIN = "SUPER_ADMIN", "Super Admin"
         ADMIN = "ADMIN", "Admin"
         USER = "USER", "User"
@@ -42,9 +42,9 @@ class User(AbstractUser):
         return self.username
 
 
-# ---------------------------------------------------
+
 # Auth Token model
-# ---------------------------------------------------
+
 class AuthToken(models.Model):
     key = models.CharField(max_length=128, unique=True, db_index=True)
     user = models.ForeignKey(
@@ -76,9 +76,9 @@ class AuthToken(models.Model):
         return f"Token for {self.user} ({'active' if self.is_active else 'inactive'})"
 
 
-# ---------------------------------------------------
+ 
 # Vehicle Type model
-# ---------------------------------------------------
+ 
 class VehicleType(models.Model):
     name = models.CharField(max_length=50, unique=True)
 
@@ -104,9 +104,9 @@ class VehicleType(models.Model):
         super().save(*args, **kwargs)
 
 
-# ---------------------------------------------------
+ 
 # Vehicle model
-# ---------------------------------------------------
+ 
 class Vehicle(models.Model):
     vehicle_number = models.CharField(max_length=50, unique=True)
     vehicle_type = models.ForeignKey(
