@@ -56,8 +56,8 @@ class AuthToken(models.Model):
     is_active = models.BooleanField(default=True)
 
     def is_expired(self):
-        # Token valid for 3 days
-        return timezone.now() > self.created + timedelta(days=3)
+        # Token valid for 7 days
+        return timezone.now() > self.created + timedelta(days=7)
 
     @staticmethod
     def generate_key():

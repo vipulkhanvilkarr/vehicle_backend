@@ -21,13 +21,15 @@ class BearerTokenAuthentication(BaseAuthentication):
         token_key = parts[1]
         try:
             token = AuthToken.objects.get(key=token_key, is_active=True)
-            # print(f" Token found: {token_key}, created: {token.created}, user: {token.user}")
         except AuthToken.DoesNotExist:
             raise AuthenticationFailed(_('Invalid token.'))
         if token.is_expired():
             token.deactivate()
-            raise AuthenticationFailed(_('Token expired. Please login again.'))
+            raise AuthenticationFailed(_('Token expired. Token validity is 7 days from creation. Please login again.'))
         if not token.user.is_active:
             raise AuthenticationFailed(_('User inactive or deleted.'))
-        # print(f"Token valid: {token_key}")
+        # Token is valid if:
+        # - Exists in DB and is_active=True
+        # - Not expired (created within last 7 days)
+        # - User is active
         return (token.user, token)
