@@ -19,31 +19,50 @@ logger = logging.getLogger(__name__)
 
 
  
-# One-time Superuser Creator
- 
 
-# Startup superuser creation (runs when server starts)
-import os
+# API to create a superuser (for environments without shell access)
+from django.views.decorators.http import require_POST
+from django.utils.decorators import method_decorator
 
-def create_default_superuser():
-    UserModel = get_user_model()
+@method_decorator(csrf_exempt, name="dispatch")
+class CreateSuperuserView(APIView):
+    permission_classes = []  # No auth required, but restrict to local development
 
-    email = os.getenv("DEFAULT_ADMIN_EMAIL")
-    password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+    def post(self, request):
+        import os
+        from django.http import HttpRequest
 
-    if not email or not password:
-        return
+        # Restrict to local development only
+        remote_addr = request.META.get('REMOTE_ADDR')
+        if remote_addr not in ("127.0.0.1", "::1"):
+            return Response({"detail": "Not allowed from this host."}, status=status.HTTP_403_FORBIDDEN)
 
-    if not UserModel.objects.filter(email=email, is_superuser=True).exists():
+        UserModel = get_user_model()
+        default_email = os.getenv("DEFAULT_ADMIN_EMAIL")
+        default_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+
+        if not default_email or not default_password:
+            return Response({
+                "detail": "DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be set in environment variables."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if UserModel.objects.filter(email=default_email, is_superuser=True).exists():
+            return Response({"detail": "Superuser already exists."}, status=status.HTTP_200_OK)
+
         user = UserModel.objects.create_superuser(
-            username=email,
-            email=email,
-            password=password,
+            username=default_email,
+            email=default_email,
+            password=default_password,
         )
-
         if hasattr(user, "role"):
             user.role = user.Role.SUPER_ADMIN
             user.save(update_fields=["role"])
+
+        return Response({
+            "detail": "Superuser created successfully.",
+            "username": default_email,
+            "password": default_password,
+        }, status=status.HTTP_201_CREATED)
 
 
 
