@@ -2,7 +2,7 @@
 # Vehicle Backend API Documentation
 
 ## Overview
-This Django REST API manages vehicles and users with role-based permissions. It supports CRUD operations for vehicles and user management, with special access for SUPER_ADMIN users. Authentication is handled by a custom 32-byte token system.
+This Django REST API manages vehicles and users with role-based permissions. It supports CRUD operations for vehicles and user management, with special access for SUPER_ADMIN users. Authentication is handled by a custom 128-byte token system.
 
 ## Features
 - Custom token-based authentication (32-byte tokens, stored in DB)
