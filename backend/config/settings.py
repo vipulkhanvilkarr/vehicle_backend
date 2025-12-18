@@ -49,6 +49,11 @@ INSTALLED_APPS = [
 ]
 
 AUTH_USER_MODEL = "vehicles.User"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -74,6 +79,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "vehicles.middleware.IPFilterMiddleware",         # custom IP filter (we'll create)
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+
 ]
 
 
