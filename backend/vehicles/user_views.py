@@ -23,19 +23,28 @@ logger = logging.getLogger(__name__)
  
 
 # Startup superuser creation (runs when server starts)
+import os
+
 def create_default_superuser():
     UserModel = get_user_model()
-    email = "vipulkhanvilkar02@gmail.com"
-    password = "Vipul@2308"
+
+    email = os.getenv("DEFAULT_ADMIN_EMAIL")
+    password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+
+    if not email or not password:
+        return
+
     if not UserModel.objects.filter(email=email, is_superuser=True).exists():
         user = UserModel.objects.create_superuser(
             username=email,
             email=email,
             password=password,
         )
-        if hasattr(user, "Role"):
+
+        if hasattr(user, "role"):
             user.role = user.Role.SUPER_ADMIN
             user.save(update_fields=["role"])
+
 
 
  
