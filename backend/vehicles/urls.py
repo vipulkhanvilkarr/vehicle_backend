@@ -1,13 +1,13 @@
 from django.urls import path, include
 
 from rest_framework.authtoken.views import obtain_auth_token  
-from .user_views import DeleteUserView, UpdateUserView, UserCreateView, CurrentUserView, LoginView, LogoutView, UserListView, create_superuser
+from .user_views import DeleteUserView, UpdateUserView, UserCreateView, CurrentUserView, LoginView, LogoutView, UserListView
 from .vehicle_views import VehicleCreateView, VehicleDeleteView, VehicleListView, VehicleUpdateView, VehicleTypeListView, VehicleDetailView
 
 
 # all routes are here 
 urlpatterns = [
-    path("create-superuser/", create_superuser),
+    # path("create-superuser/", create_superuser),
     path("auth/login/", LoginView.as_view(), name="api_login"),
     path("auth/logout/", LogoutView.as_view(), name="api_logout"),
 

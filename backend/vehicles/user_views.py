@@ -21,59 +21,21 @@ logger = logging.getLogger(__name__)
  
 # One-time Superuser Creator
  
-@csrf_exempt
-def create_superuser(request):
-    """
-    One-time endpoint to create the first superuser in production.
-    Protected with SETUP_SECRET and disabled once any superuser exists.
-    """
-    if request.method != "POST":
-        return JsonResponse({"detail": "Method not allowed"}, status=405)
 
+# Startup superuser creation (runs when server starts)
+def create_default_superuser():
     UserModel = get_user_model()
-
-    # If any superuser exists, do NOT allow creating another via this endpoint
-    if UserModel.objects.filter(is_superuser=True).exists():
-        return JsonResponse(
-            {"detail": "Superuser already exists"},
-            status=400,
+    email = "vipulkhanvilkar02@gmail.com"
+    password = "Vipul@2308"
+    if not UserModel.objects.filter(email=email, is_superuser=True).exists():
+        user = UserModel.objects.create_superuser(
+            username=email,
+            email=email,
+            password=password,
         )
-
-    expected_secret = getattr(settings, "SETUP_SECRET", None)
-
-    try:
-        data = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"detail": "Invalid JSON"}, status=400)
-
-    email = data.get("email") or data.get("username")
-    password = data.get("password")
-    secret = data.get("secret")
-
-    if expected_secret and secret != expected_secret:
-        return JsonResponse({"detail": "Forbidden"}, status=403)
-
-    if not email or not password:
-        return JsonResponse(
-            {"detail": "Email (or username) and password are required"},
-            status=400,
-        )
-
-    # Use email as username
-    user = UserModel.objects.create_superuser(
-        username=email,
-        email=email,
-        password=password,
-    )
-
-    if hasattr(user, "Role"):
-        user.role = user.Role.SUPER_ADMIN
-        user.save(update_fields=["role"])
-
-    return JsonResponse(
-        {"detail": "Superuser created successfully"},
-        status=201,
-    )
+        if hasattr(user, "Role"):
+            user.role = user.Role.SUPER_ADMIN
+            user.save(update_fields=["role"])
 
 
  
@@ -105,10 +67,18 @@ class UserCreateView(generics.CreateAPIView):
 
         username = data.get("username")
         password = data.get("password")
+        role = data.get("role", User.Role.USER)
 
         if not username or not password:
             return Response(
                 {"detail": "Username and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check  same username and role already exists
+        if User.objects.filter(username=username, role=role).exists():
+            return Response(
+                {"detail": f"User with username '{username}' and role '{role}' already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
