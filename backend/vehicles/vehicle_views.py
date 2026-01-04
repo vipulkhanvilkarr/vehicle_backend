@@ -1,76 +1,127 @@
 import logging
+from accounts.permissions import AdminAccess, SuperAdminOnly
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Vehicle, VehicleType
 from .serializers import VehicleSerializer, VehicleTypeSerializer
-from .permissions import RoleBasedCRUD, SuperAdminOnly
+from garages.models import GarageUser
 
 
+def get_user_garage(user):
+    """Helper to get user's active garage from GarageUser"""
+    membership = GarageUser.objects.filter(user=user, is_active=True).first()
+    return membership.garage if membership else None
 
 
 class VehicleTypeListView(generics.ListAPIView):
     queryset = VehicleType.objects.all()
     serializer_class = VehicleTypeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AdminAccess]
+
 
 class VehicleCreateView(generics.CreateAPIView):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
-    permission_classes = [IsAuthenticated, RoleBasedCRUD]
+    permission_classes = [AdminAccess]
 
     def create(self, request, *args, **kwargs):
         try:
+            user = request.user
+            garage = get_user_garage(user)
+
+            # Non-super admin must have a garage
+            if not user.is_super_admin() and not garage:
+                return Response(
+                    {"success": False, "error": "Only garage members can create vehicles"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            vehicle_number = serializer.validated_data.get('vehicle_number', '')
-            return Response({
-                "message": f"Vehicle number {vehicle_number} created successfully"
-            }, status=status.HTTP_201_CREATED)
+
+            # Auto-assign garage for non-super admin
+            if garage:
+                vehicle = serializer.save(garage=garage)
+            else:
+                # Super admin - use provided garage or customer's garage
+                vehicle = serializer.save()
+                if vehicle.customer and not vehicle.garage:
+                    vehicle.garage = vehicle.customer.garage
+                    vehicle.save()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Vehicle created successfully",
+                    "data": VehicleSerializer(vehicle).data
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
         except Exception as exc:
-            return Response({"error": "Failed to create vehicle", "details": str(exc)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"success": False, "error": "Failed to create vehicle", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class VehicleListView(generics.ListAPIView):
-    queryset = Vehicle.objects.all().order_by("-id")
     serializer_class = VehicleSerializer
-    permission_classes = [IsAuthenticated, RoleBasedCRUD]
+    permission_classes = [AdminAccess]
 
-    def list(self, request, *args, **kwargs):
-        try:
-            return super().list(request, *args, **kwargs)
-        except Exception as exc:
-            return Response({"error": "Failed to fetch vehicles", "details": str(exc)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_super_admin():
+            return Vehicle.objects.all().order_by("-id")
+
+        garage = get_user_garage(user)
+        if garage:
+            return Vehicle.objects.filter(garage=garage).order_by("-id")
+
+        return Vehicle.objects.none()
+
 
 class VehicleDetailView(generics.RetrieveAPIView):
-    queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
-    permission_classes = [IsAuthenticated, RoleBasedCRUD]
+    permission_classes = [AdminAccess]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_super_admin():
+            return Vehicle.objects.all()
+        garage = get_user_garage(user)
+        if garage:
+            return Vehicle.objects.filter(garage=garage)
+        return Vehicle.objects.none()
 
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
             data = self.get_serializer(instance).data
-            vehicle_type = None
-            if getattr(instance, "vehicle_type", None):
-                vehicle_type = instance.vehicle_type
-            else:
-                vt_id = getattr(instance, "vehicle_type_id", None)
-                if vt_id:
-                    vehicle_type = VehicleType.objects.filter(id=vt_id).first()
-            if vehicle_type:
-                data["vehicle_type"] = VehicleTypeSerializer(vehicle_type).data
-            return Response(data, status=status.HTTP_200_OK)
+            if instance.vehicle_type:
+                data["vehicle_type"] = VehicleTypeSerializer(instance.vehicle_type).data
+            return Response({"success": True, "data": data}, status=status.HTTP_200_OK)
         except Exception as exc:
-            return Response({"error": "Failed to fetch vehicle", "details": str(exc)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"success": False, "error": "Failed to fetch vehicle", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class VehicleUpdateView(generics.UpdateAPIView):
-    queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
-    permission_classes = [IsAuthenticated, RoleBasedCRUD]
+    permission_classes = [AdminAccess]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_super_admin():
+            return Vehicle.objects.all()
+        garage = get_user_garage(user)
+        if garage:
+            return Vehicle.objects.filter(garage=garage)
+        return Vehicle.objects.none()
 
     def update(self, request, *args, **kwargs):
         try:
@@ -85,12 +136,13 @@ class VehicleUpdateView(generics.UpdateAPIView):
                 message = f"Vehicle field(s) {field_list} updated successfully"
             else:
                 message = "Vehicle updated successfully"
-            return Response({
-                "message": message
-            }, status=status.HTTP_200_OK)
+            return Response({"success": True, "message": message}, status=status.HTTP_200_OK)
         except Exception as exc:
-            return Response({"error": "Failed to update vehicle", "details": str(exc)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"success": False, "error": "Failed to update vehicle", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class VehicleDeleteView(generics.DestroyAPIView):
     queryset = Vehicle.objects.all()
@@ -99,11 +151,12 @@ class VehicleDeleteView(generics.DestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            self.check_permissions(request)
             response = super().destroy(request, *args, **kwargs)
             if response.status_code == status.HTTP_204_NO_CONTENT:
-                return Response({"message": "Vehicle deleted successfully"}, status=status.HTTP_200_OK)
+                return Response({"success": True, "message": "Vehicle deleted successfully"}, status=status.HTTP_200_OK)
             return response
         except Exception as exc:
-            return Response({"error": "Failed to delete vehicle", "details": str(exc)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"success": False, "error": "Failed to delete vehicle", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

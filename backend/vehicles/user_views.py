@@ -1,229 +1,280 @@
-import json
-import logging
+# import json
+# import logging
 
-from django.contrib.auth import authenticate, get_user_model
-from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+# from django.contrib.auth import authenticate, get_user_model
+# from django.conf import settings
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
 
-from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework.views import APIView
+# from rest_framework import generics, status
+# from rest_framework.permissions import IsAuthenticated, AllowAny
+# from rest_framework.response import Response
+# from rest_framework.views import APIView
 
-from .models import User, AuthToken
-from .serializers import UserSerializer
-from .permissions import SuperAdminOnly
+# from accounts.models import User
+# from .serializers import UserSerializer
+# from .permissions import SuperAdminOnly
 
-logger = logging.getLogger(__name__)
-
-
- 
-
-# API to create a superuser (for environments without shell access)
-from django.views.decorators.http import require_POST
-from django.utils.decorators import method_decorator
-
-@method_decorator(csrf_exempt, name="dispatch")
-class CreateSuperuserView(APIView):
-    permission_classes = []  # No auth required, but restrict to local development
-
-    def post(self, request):
-        import os
-        from django.http import HttpRequest
-
-        # Restrict to local development only
-        remote_addr = request.META.get('REMOTE_ADDR')
-        if remote_addr not in ("127.0.0.1", "::1"):
-            return Response({"detail": "Not allowed from this host."}, status=status.HTTP_403_FORBIDDEN)
-
-        UserModel = get_user_model()
-        default_email = os.getenv("DEFAULT_ADMIN_EMAIL")
-        default_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
-
-        if not default_email or not default_password:
-            return Response({
-                "detail": "DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be set in environment variables."
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if UserModel.objects.filter(email=default_email, is_superuser=True).exists():
-            return Response({"detail": "Superuser already exists."}, status=status.HTTP_200_OK)
-
-        user = UserModel.objects.create_superuser(
-            username=default_email,
-            email=default_email,
-            password=default_password,
-        )
-        if hasattr(user, "role"):
-            user.role = user.Role.SUPER_ADMIN
-            user.save(update_fields=["role"])
-
-        return Response({
-            "detail": "Superuser created successfully.",
-            "username": default_email,
-            "password": default_password,
-        }, status=status.HTTP_201_CREATED)
-
+# logger = logging.getLogger(__name__)
 
 
  
-# User Views
 
-class UserListView(generics.ListAPIView):
-    queryset = User.objects.all().order_by("-id")
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, SuperAdminOnly]
+# # API to create a superuser (for environments without shell access)
+# from django.views.decorators.http import require_POST
+# from django.utils.decorators import method_decorator
 
+# # @method_decorator(csrf_exempt, name="dispatch")
+# # class CreateSuperuserView(APIView):
+# #     permission_classes = []  # No auth required, but restrict to local development
 
-class UserCreateView(generics.CreateAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, SuperAdminOnly]
+# #     def post(self, request):
+# #         import os
+# #         from django.http import HttpRequest
 
-    def get_queryset(self):
-        self.check_permissions(self.request)
-        return User.objects.all()
+# #         # Restrict to local development only
+# #         remote_addr = request.META.get('REMOTE_ADDR')
+# #         if remote_addr not in ("127.0.0.1", "::1"):
+# #             return Response({"detail": "Not allowed from this host."}, status=status.HTTP_403_FORBIDDEN)
 
-    def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+# #         UserModel = get_user_model()
+# #         default_email = os.getenv("DEFAULT_ADMIN_EMAIL")
+# #         default_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
 
-        # Prevent creating another SUPER_ADMIN via API
-        if data.get("role") == User.Role.SUPER_ADMIN:
-            return Response(
-                {"detail": "Cannot create another SUPER_ADMIN from API"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+# #         if not default_email or not default_password:
+# #             return Response({
+# #                 "detail": "DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be set in environment variables."
+# #             }, status=status.HTTP_400_BAD_REQUEST)
 
-        username = data.get("username")
-        password = data.get("password")
-        role = data.get("role", User.Role.USER)
+# #         if UserModel.objects.filter(email=default_email, is_superuser=True).exists():
+# #             return Response({"detail": "Superuser already exists."}, status=status.HTTP_200_OK)
 
-        if not username or not password:
-            return Response(
-                {"detail": "Username and password are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+# #         user = UserModel.objects.create_superuser(
+# #             username=default_email,
+# #             email=default_email,
+# #             password=default_password,
+# #         )
+# #         if hasattr(user, "role"):
+# #             user.role = user.Role.SUPER_ADMIN
+# #             user.save(update_fields=["role"])
 
-        # Check  same username and role already exists
-        if User.objects.filter(username=username, role=role).exists():
-            return Response(
-                {"detail": f"User with username '{username}' and role '{role}' already exists."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        data["username"] = username
-
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED,
-            headers=headers,
-        )
+# #         return Response({
+# #             "detail": "Superuser created successfully.",
+# #             "username": default_email,
+# #             "password": default_password,
+# #         }, status=status.HTTP_201_CREATED)
 
 
-class UpdateUserView(generics.UpdateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, SuperAdminOnly]
 
-    def update(self, request, *args, **kwargs):
-        try:
-            self.check_permissions(request)
-            return super().update(request, *args, **kwargs)
-        except Exception as exc:
-            logger.exception("Failed to update user: %s", exc)
-            return Response(
-                {"error": "Failed to update user", "details": str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+# @method_decorator(csrf_exempt, name="dispatch")
+# class CreateSuperuserView(APIView):
+#     permission_classes = []  # Local/dev only
+
+#     def post(self, request):
+#         import os
+
+#         remote_addr = request.META.get("REMOTE_ADDR")
+#         if remote_addr not in ("127.0.0.1", "::1"):
+#             return Response(
+#                 {"detail": "Not allowed from this host."},
+#                 status=status.HTTP_403_FORBIDDEN,
+#             )
+
+#         UserModel = get_user_model()
+#         default_email = os.getenv("DEFAULT_ADMIN_EMAIL")
+#         default_password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+
+#         if not default_email or not default_password:
+#             return Response(
+#                 {
+#                     "detail": "DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be set."
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         if UserModel.objects.filter(username=default_email).exists():
+#             return Response(
+#                 {"detail": "Super admin already exists."},
+#                 status=status.HTTP_200_OK,
+#             )
+
+#         user = UserModel.objects.create_superuser(
+#             username=default_email,
+#             email=default_email,
+#             password=default_password,
+#         )
+
+#         # 🔥 Ensure business role is set
+#         if hasattr(user, "role"):
+#             user.role = user.Role.SUPER_ADMIN
+#             user.save(update_fields=["role"])
+
+#         return Response(
+#             {
+#                 "detail": "Super admin created successfully.",
+#                 "username": default_email,
+#             },
+#             status=status.HTTP_201_CREATED,
+#         )
 
 
-class DeleteUserView(generics.DestroyAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, SuperAdminOnly]
+# # User Views
 
-    def destroy(self, request, *args, **kwargs):
-        try:
-            self.check_permissions(request)
-            response = super().destroy(request, *args, **kwargs)
-            if response.status_code == status.HTTP_204_NO_CONTENT:
-                return Response(
-                    {"message": "User deleted successfully"},
-                    status=status.HTTP_200_OK,
-                )
-            return response
-        except Exception as exc:
-            logger.exception("Failed to delete user: %s", exc)
-            return Response(
-                {"error": "Failed to delete user", "details": str(exc)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+# class UserListView(generics.ListAPIView):
+#     queryset = User.objects.all().order_by("-id")
+#     serializer_class = UserSerializer
+#     permission_classes = [IsAuthenticated, SuperAdminOnly]
+
+
+# class UserCreateView(generics.CreateAPIView):
+#     serializer_class = UserSerializer
+#     permission_classes = [IsAuthenticated, SuperAdminOnly]
+
+#     def get_queryset(self):
+#         self.check_permissions(self.request)
+#         return User.objects.all()
+
+#     def create(self, request, *args, **kwargs):
+#         data = request.data.copy()
+
+#         # Prevent creating another SUPER_ADMIN via API
+#         if data.get("role") == User.Role.SUPER_ADMIN:
+#             return Response(
+#                 {"detail": "Cannot create another SUPER_ADMIN from API"},
+#                 status=status.HTTP_403_FORBIDDEN,
+#             )
+
+#         username = data.get("username")
+#         password = data.get("password")
+#         role = data.get("role", User.Role.USER)
+
+#         if not username or not password:
+#             return Response(
+#                 {"detail": "Username and password are required."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         # Check  same username and role already exists
+#         if User.objects.filter(username=username, role=role).exists():
+#             return Response(
+#                 {"detail": f"User with username '{username}' and role '{role}' already exists."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         data["username"] = username
+
+#         serializer = self.get_serializer(data=data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(
+#             serializer.data,
+#             status=status.HTTP_201_CREATED,
+#             headers=headers,
+#         )
+
+
+# class UpdateUserView(generics.UpdateAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     permission_classes = [IsAuthenticated, SuperAdminOnly]
+
+#     def update(self, request, *args, **kwargs):
+#         try:
+#             self.check_permissions(request)
+#             return super().update(request, *args, **kwargs)
+#         except Exception as exc:
+#             logger.exception("Failed to update user: %s", exc)
+#             return Response(
+#                 {"error": "Failed to update user", "details": str(exc)},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             )
+
+
+# class DeleteUserView(generics.DestroyAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     permission_classes = [IsAuthenticated, SuperAdminOnly]
+
+#     def destroy(self, request, *args, **kwargs):
+#         try:
+#             self.check_permissions(request)
+#             response = super().destroy(request, *args, **kwargs)
+#             if response.status_code == status.HTTP_204_NO_CONTENT:
+#                 return Response(
+#                     {"message": "User deleted successfully"},
+#                     status=status.HTTP_200_OK,
+#                 )
+#             return response
+#         except Exception as exc:
+#             logger.exception("Failed to delete user: %s", exc)
+#             return Response(
+#                 {"error": "Failed to delete user", "details": str(exc)},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             )
 
 
  
-# Auth Views
+# # Auth Views
  
-class LoginView(APIView):
-    permission_classes = [AllowAny]
+# class LoginView(APIView):
+#     permission_classes = [AllowAny]
 
-    def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
+#     def post(self, request):
+#         username = request.data.get("username")
+#         password = request.data.get("password")
 
-        if not username or not password:
-            return Response(
-                {"message": "Username and password required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+#         if not username or not password:
+#             return Response(
+#                 {"message": "Username and password required."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
 
-        user = authenticate(username=username, password=password)
+#         user = authenticate(username=username, password=password)
 
-        if user is not None:
-            # Deactivate any existing active tokens
-            AuthToken.objects.filter(user=user, is_active=True).update(is_active=False)
-            token = AuthToken.create_token(user)
-            token_key = getattr(token, "key", None) or str(token)
+#         if user is not None:
+#             # Deactivate any existing active tokens
+#             AuthToken.objects.filter(user=user, is_active=True).update(is_active=False)
+#             token = AuthToken.create_token(user)
+#             token_key = getattr(token, "key", None) or str(token)
 
-            return Response(
-                {
-                    "token": token_key,
-                    "message": "Login successful.",
-                },
-                status=status.HTTP_200_OK,
-            )
+#             return Response(
+#                 {
+#                     "token": token_key,
+#                     "message": "Login successful.",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
 
-        return Response(
-            {"message": "Invalid credentials."},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
-
-
-class LogoutView(APIView):
-    permission_classes = []
-
-    def post(self, request):
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Token "):
-            token_key = auth_header.split(" ", 1)[1]
-            try:
-                token = AuthToken.objects.get(key=token_key, is_active=True)
-                token.deactivate()
-            except AuthToken.DoesNotExist:
-                pass
-
-        # Always return success, even if token is missing or invalid
-        return Response(
-            {"detail": "Logged out successfully."},
-            status=status.HTTP_200_OK,
-        )
+#         return Response(
+#             {"message": "Invalid credentials."},
+#             status=status.HTTP_401_UNAUTHORIZED,
+#         )
 
 
-class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
+# class LogoutView(APIView):
+#     permission_classes = []
 
-    def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def post(self, request):
+#         auth_header = request.headers.get("Authorization", "")
+#         if auth_header.startswith("Token "):
+#             token_key = auth_header.split(" ", 1)[1]
+#             try:
+#                 token = AuthToken.objects.get(key=token_key, is_active=True)
+#                 token.deactivate()
+#             except AuthToken.DoesNotExist:
+#                 pass
+
+#         # Always return success, even if token is missing or invalid
+#         return Response(
+#             {"detail": "Logged out successfully."},
+#             status=status.HTTP_200_OK,
+#         )
+
+
+# class CurrentUserView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         serializer = UserSerializer(request.user)
+#         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -46,22 +46,28 @@ INSTALLED_APPS = [
     "corsheaders",
     'vehicles',
     'rest_framework.authtoken',
+    'garages', 
+    'services',
+    'accounts',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
-AUTH_USER_MODEL = "vehicles.User"
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
+AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "vehicles.authentication.BearerTokenAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
-    ],
+    ),
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),    # 1 hour
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),    # 7 days
 }
 
 
@@ -79,8 +85,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "vehicles.middleware.IPFilterMiddleware",         # custom IP filter (we'll create)
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-
 ]
 
 

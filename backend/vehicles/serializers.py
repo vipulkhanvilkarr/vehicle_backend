@@ -1,6 +1,7 @@
-
 from rest_framework import serializers
-from .models import Vehicle, User, VehicleType
+from .models import Vehicle, VehicleType
+from accounts.models import User
+from garages.models import Customer
 import re
 from django.utils.html import strip_tags
 
@@ -14,7 +15,7 @@ class VehicleTypeSerializer(serializers.ModelSerializer):
 
 
 class VehicleSerializer(serializers.ModelSerializer):
-
+    customer_name = serializers.SerializerMethodField()
     vehicle_type = serializers.PrimaryKeyRelatedField(queryset=VehicleType.objects.all(), required=True)
     vehicle_number = serializers.CharField(required=True)
     vehicle_model = serializers.CharField(required=True)
@@ -29,10 +30,30 @@ class VehicleSerializer(serializers.ModelSerializer):
             "vehicle_type_name",
             "vehicle_model",
             "vehicle_description",
+            "customer_id",
+            "customer_name",
         ]
 
     def get_vehicle_type_name(self, obj):
         return obj.vehicle_type.name if obj.vehicle_type else None
+
+    def get_customer_name(self, obj):
+        return obj.customer.name if obj.customer else None
+
+    def get_customer_id(self, obj):
+        return obj.customer.id if obj.customer else None
+
+    def validate(self, attrs):
+        customer = attrs.get("customer")
+        request = self.context.get("request")
+
+        if customer and request and hasattr(request.user, "garage"):
+            if customer.garage != request.user.garage:
+                raise serializers.ValidationError(
+                    "Customer does not belong to your garage."
+                )
+
+        return attrs
 
     def validate_vehicle_number(self, value):
         # Always convert to uppercase
