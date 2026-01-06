@@ -1,3 +1,26 @@
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+
+
+User = get_user_model()
+
+class UserNameByIdView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            return Response({
+                "success": True,
+                "user_id": user.id,
+                "username": user.username
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({
+                "success": False,
+                "error": "User not found"
+            }, status=status.HTTP_404_NOT_FOUND)
 import logging
 from rest_framework import generics, status
 from rest_framework.views import APIView
