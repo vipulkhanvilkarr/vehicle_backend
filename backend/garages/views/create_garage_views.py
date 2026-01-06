@@ -48,7 +48,7 @@ class CreateGarageView(APIView):
 
             # Create garage and GarageUser in a transaction
             with transaction.atomic():
-                garage = serializer.save(user=owner)  # Save user_id in Garage table
+                garage = serializer.save(user=owner)
                 GarageUser.objects.create(
                     user=owner,
                     garage=garage,
@@ -61,7 +61,11 @@ class CreateGarageView(APIView):
                     "message": "Garage created successfully",
                     "data": {
                         "garage_id": garage.id,
-                        "garage_name": garage.name,
+                        "garage_name": garage.garage_name,
+                        "mobile": garage.mobile,
+                        "address": garage.address,
+                        "whatsapp_number": garage.whatsapp_number,
+                        "email": garage.email,
                         "user_id": owner.id,
                         "username": owner.username,
                     }

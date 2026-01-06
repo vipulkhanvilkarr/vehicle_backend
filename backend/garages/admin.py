@@ -4,9 +4,10 @@ from .models import Garage, Customer, GarageUser
 
 @admin.register(Garage)
 class GarageAdmin(admin.ModelAdmin):
-    list_display = ("name", "mobile", "user", "created_at")
-    search_fields = ("name", "mobile")
+    list_display = ("garage_name", "mobile", "user", "created_at", "whatsapp_number")
+    search_fields = ("garage_name", "mobile")
     list_filter = ("user",)
+    
 
 
 @admin.register(GarageUser)

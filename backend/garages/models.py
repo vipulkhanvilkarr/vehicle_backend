@@ -8,23 +8,24 @@ class Garage(models.Model):
     user field stores the primary owner, GarageUser manages all memberships.
     """
 
-    name = models.CharField(max_length=150)
-    mobile = models.CharField(max_length=15)
-    address = models.TextField(blank=True)
-    
+    garage_name = models.CharField(max_length=150)
+    mobile = models.CharField(max_length=10)
+    address = models.TextField(blank=True, default=None, null=True)
+    whatsapp_number = models.CharField(max_length=10, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="owned_garages",
         null=True,
         blank=True,
-        help_text="Primary owner of this garage",
+       
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.mobile})"
+        return f"{self.garage_name} ({self.mobile})"
 
     def get_owner(self):
         """Get the owner of this garage"""
