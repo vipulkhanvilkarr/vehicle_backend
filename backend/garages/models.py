@@ -74,6 +74,7 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     mobile = models.CharField(max_length=15)
     address = models.TextField(blank=True)
+    whatsapp_number = models.CharField(max_length=15, blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

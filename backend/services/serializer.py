@@ -4,6 +4,7 @@ from datetime import date
 from services.models import ServiceRecord
 from garages.models import Customer
 from vehicles.models import Vehicle
+from services.service_reminder import create_service_reminders
 
 
 class ServiceRecordSerializer(serializers.ModelSerializer):
@@ -80,3 +81,20 @@ class ServiceRecordSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+    def create(self, validated_data):
+        service = super().create(validated_data)
+        # Create reminders after the record is created. Failures here should not break main flow.
+        try:
+            create_service_reminders(service)
+        except Exception:
+            pass
+        return service
+
+    def update(self, instance, validated_data):
+        service = super().update(instance, validated_data)
+        try:
+            create_service_reminders(service)
+        except Exception:
+            pass
+        return service

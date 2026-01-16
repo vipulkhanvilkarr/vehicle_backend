@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'services',
     'accounts',
     'rest_framework_simplejwt.token_blacklist',
+    "django_celery_beat",
+    "celery_app",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Vehicle, VehicleType
 from .serializers import VehicleSerializer, VehicleTypeSerializer
-from garages.models import GarageUser
+from garages.models import GarageUser, Garage
 
 
 def get_user_garage(user):
@@ -44,9 +44,25 @@ class VehicleCreateView(generics.CreateAPIView):
             if garage:
                 vehicle = serializer.save(garage=garage)
             else:
-                # Super admin - use provided garage or customer's garage
+                # Super admin - use provided garage if given, otherwise fallback to customer's garage
+                garage_id = request.data.get("garage_id") or request.data.get("garage")
+                garage_obj = None
+                if garage_id:
+                    try:
+                        garage_obj = Garage.objects.get(pk=garage_id)
+                    except Garage.DoesNotExist:
+                        return Response(
+                            {"success": False, "error": "Garage not found"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                 vehicle = serializer.save()
-                if vehicle.customer and not vehicle.garage:
+
+                # Apply validated garage if provided
+                if garage_obj:
+                    vehicle.garage = garage_obj
+                    vehicle.save()
+                # else fallback to customer's garage if available
+                elif vehicle.customer and not vehicle.garage:
                     vehicle.garage = vehicle.customer.garage
                     vehicle.save()
 
@@ -130,6 +146,28 @@ class VehicleUpdateView(generics.UpdateAPIView):
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
+
+            # If super-admin supplied a garage_id, validate and apply it
+            if user.is_super_admin():
+                garage_id = request.data.get("garage_id") or request.data.get("garage")
+                if garage_id is not None:
+                    try:
+                        garage_obj = Garage.objects.get(pk=garage_id)
+                    except Garage.DoesNotExist:
+                        return Response(
+                            {"success": False, "error": "Garage not found"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    instance = self.get_object()
+                    instance.garage = garage_obj
+                    instance.save()
+                else:
+                    # If no garage provided but customer changed, ensure garage falls back to customer's garage
+                    instance = self.get_object()
+                    if instance.customer and not instance.garage:
+                        instance.garage = instance.customer.garage
+                        instance.save()
+
             updated_fields = list(request.data.keys())
             if updated_fields:
                 field_list = ', '.join(updated_fields)

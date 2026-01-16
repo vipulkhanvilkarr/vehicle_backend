@@ -31,10 +31,26 @@ class CustomerCreateView(generics.CreateAPIView):
             garage = get_user_garage(user)
 
             if not garage:
-                return Response(
-                    {"success": False, "error": "Only garage members can create customers"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                # Allow super-admins to pass a garage_id
+                if user.is_super_admin():
+                    garage_id = request.data.get("garage_id") or request.data.get("garage")
+                    if not garage_id:
+                        return Response(
+                            {"success": False, "error": "Garage is required when creating customers as super admin"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    try:
+                        garage = Garage.objects.get(pk=garage_id)
+                    except Garage.DoesNotExist:
+                        return Response(
+                            {"success": False, "error": "Garage not found"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                else:
+                    return Response(
+                        {"success": False, "error": "Only garage members can create customers"},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
 
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
