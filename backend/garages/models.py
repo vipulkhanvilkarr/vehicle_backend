@@ -56,7 +56,7 @@ class GarageUser(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.garage.name}"
+        return f"{self.user.username} - {self.garage.garage_name}"
 
 
 class Customer(models.Model):
