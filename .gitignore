@@ -1,9 +1,7 @@
 # Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+__pycache__
 *.pyc
+*.pyo
 
 # Django
 *.sqlite3
@@ -29,7 +27,7 @@ htmlcov/
 .tox/
 
 # Node
-node_modules/
+node_modules
 
 # Misc
 *.bak
@@ -37,7 +35,7 @@ node_modules/
 *.swo
 
 # Git
-.git/
+.git
 
 # Ignore migrations cache
 **/migrations/__pycache__/
