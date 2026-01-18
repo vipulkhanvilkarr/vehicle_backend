@@ -54,7 +54,10 @@ def send_service_reminder(self, reminder_id):
         
         # Determine urgency based on reminder_day
         days_left = reminder.reminder_day
-        urgency_text = f"Only {days_left} days left!" if days_left <= 3 else "Book your slot soon."
+        if days_left <= 3:
+            urgency_text = f"Only {days_left} days left! Your service is due on {service.next_service_date.strftime('%d %b %Y')}."
+        else:
+            urgency_text = f"Book your slot soon. Due date: {service.next_service_date.strftime('%d %b %Y')}."
 
         # WhatsApp
         if reminder.channel in ["WHATSAPP", "BOTH"]:
