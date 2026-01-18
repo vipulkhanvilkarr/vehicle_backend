@@ -1,0 +1,11 @@
+🚗 *Service Reminder - {{ garage.garage_name }}*
+
+Hello {{ customer.name }},
+Your *{{ vehicle.vehicle_model }}* ({{ vehicle.vehicle_number }}) is due for service.
+
+📅 Only 1 day left! Your service is due on {{ service.next_service_date|date:"d M Y" }}.
+⚠️ Tomorrow is the due date!
+
+📍 Address: {{ garage_address|default:"Contact us for location" }}
+📞 Call: {{ garage_phone }}
+💬 WhatsApp: {{ garage_whatsapp }}

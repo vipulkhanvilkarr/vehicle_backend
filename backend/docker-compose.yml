@@ -22,7 +22,7 @@ services:
 
   celery-beat:
     build: .
-    command: celery -A config.celery_app:app beat -l info
+    command: celery -A config.celery_app:app beat -l info --scheduler celery.beat:PersistentScheduler
     volumes:
       - .:/app
     environment:
@@ -31,6 +31,9 @@ services:
       - POSTGRES_PORT=5432
       - CELERY_BROKER_URL=${CELERY_BROKER_URL_DOCKER}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND_DOCKER}
+      - SERVICE_REMINDER_HOUR=${SERVICE_REMINDER_HOUR}
+      - SERVICE_REMINDER_MINUTE=${SERVICE_REMINDER_MINUTE}
+      - CELERY_TIMEZONE=${CELERY_TIMEZONE}
     env_file:
       - .env
     depends_on:

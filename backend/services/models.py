@@ -141,6 +141,13 @@ class ServiceReminder(models.Model):
         help_text="WhatsApp / Email provider reference ID",
     )
 
+    sent_via = models.CharField(
+        max_length=30,
+        null=True,
+        blank=True,
+        help_text="Channels that actually succeeded (e.g., 'WHATSAPP', 'EMAIL', 'WHATSAPP,EMAIL')",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )

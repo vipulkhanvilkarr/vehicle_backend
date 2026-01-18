@@ -1,0 +1,9 @@
+<html>
+  <body>
+    <h1>Service Reminder - {{ garage.garage_name }}</h1>
+    <p>Hi {{ customer.name }},</p>
+    <p>Your {{ vehicle.vehicle_model }} ({{ vehicle.vehicle_number }}) is due for service <strong>tomorrow</strong> ({{ service.next_service_date|date:"d M Y" }}).</p>
+    <p>Please contact us if you need to reschedule.</p>
+    <p>Call: {{ garage_phone }} | WhatsApp: {{ garage_whatsapp }}</p>
+  </body>
+</html>

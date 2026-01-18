@@ -40,6 +40,14 @@ class VehicleCreateView(generics.CreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
+            # Ensure customer is present
+            customer = serializer.validated_data.get("customer")
+            if not customer:
+                return Response(
+                    {"success": False, "error": "Customer is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Auto-assign garage for non-super admin
             if garage:
                 vehicle = serializer.save(garage=garage)
@@ -126,7 +134,7 @@ class VehicleDetailView(generics.RetrieveAPIView):
             )
 
 
-class VehicleUpdateView(generics.UpdateAPIView):
+class VehicleUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = VehicleSerializer
     permission_classes = [AdminAccess]
 
@@ -139,6 +147,19 @@ class VehicleUpdateView(generics.UpdateAPIView):
             return Vehicle.objects.filter(garage=garage)
         return Vehicle.objects.none()
 
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            data = self.get_serializer(instance).data
+            if instance.vehicle_type:
+                data["vehicle_type"] = VehicleTypeSerializer(instance.vehicle_type).data
+            return Response({"success": True, "data": data}, status=status.HTTP_200_OK)
+        except Exception as exc:
+            return Response(
+                {"success": False, "error": "Failed to fetch vehicle", "details": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     def update(self, request, *args, **kwargs):
         try:
             partial = kwargs.pop("partial", False)
@@ -146,6 +167,8 @@ class VehicleUpdateView(generics.UpdateAPIView):
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
+
+            user = request.user  # <-- fixed: ensure user is defined
 
             # If super-admin supplied a garage_id, validate and apply it
             if user.is_super_admin():
@@ -161,12 +184,12 @@ class VehicleUpdateView(generics.UpdateAPIView):
                     instance = self.get_object()
                     instance.garage = garage_obj
                     instance.save()
-                else:
-                    # If no garage provided but customer changed, ensure garage falls back to customer's garage
-                    instance = self.get_object()
-                    if instance.customer and not instance.garage:
-                        instance.garage = instance.customer.garage
-                        instance.save()
+            else:
+                # If no garage provided but customer changed, ensure garage falls back to customer's garage
+                instance = self.get_object()
+                if instance.customer and not instance.garage:
+                    instance.garage = instance.customer.garage
+                    instance.save()
 
             updated_fields = list(request.data.keys())
             if updated_fields:

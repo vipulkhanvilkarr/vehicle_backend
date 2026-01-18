@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from .models import Vehicle, VehicleType
-from accounts.models import User
 from garages.models import Customer
-import re
 from django.utils.html import strip_tags
+from django.contrib.auth import get_user_model
+import re
+
+User = get_user_model()
 
 
 # vehicle serializer
@@ -15,11 +17,14 @@ class VehicleTypeSerializer(serializers.ModelSerializer):
 
 
 class VehicleSerializer(serializers.ModelSerializer):
-    customer_name = serializers.SerializerMethodField()
-    vehicle_type = serializers.PrimaryKeyRelatedField(queryset=VehicleType.objects.all(), required=True)
-    vehicle_number = serializers.CharField(required=True)
-    vehicle_model = serializers.CharField(required=True)
-    vehicle_type_name = serializers.SerializerMethodField(read_only=True)
+    # Accept customer_id as input and also return it in serialized output
+    customer_id = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(),
+        source="customer",
+        required=True,
+    )
+    customer_name = serializers.CharField(source="customer.name", read_only=True)
+    vehicle_type_name = serializers.CharField(source="vehicle_type.name", read_only=True)
 
     class Meta:
         model = Vehicle
@@ -33,15 +38,6 @@ class VehicleSerializer(serializers.ModelSerializer):
             "customer_id",
             "customer_name",
         ]
-
-    def get_vehicle_type_name(self, obj):
-        return obj.vehicle_type.name if obj.vehicle_type else None
-
-    def get_customer_name(self, obj):
-        return obj.customer.name if obj.customer else None
-
-    def get_customer_id(self, obj):
-        return obj.customer.id if obj.customer else None
 
     def validate(self, attrs):
         customer = attrs.get("customer")

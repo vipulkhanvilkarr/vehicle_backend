@@ -1,26 +1,35 @@
 from celery import shared_task
 from django.utils.timezone import now
 from services.models import ServiceReminder
-from .service_reminder import send_service_reminder
+from celery_app.service_reminder import send_service_reminder
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task
-def schedule_due_service_reminders():
+def trigger_due_service_reminders():
     """
-    Checks the database for all ServiceReminders due TODAY (and still PENDING).
-    Triggers 'send_service_reminder' specifically for each one.
+    Runs once per day.
+    Finds all PENDING reminders due today or earlier
+    and triggers send_service_reminder for each.
     """
     today = now().date()
-    print(f"--- [Scheduler] Checking for reminders due on {today} ---")
-    
-    # Filter for PENDING reminders scheduled for today
-    reminders = ServiceReminder.objects.filter(
-        status="PENDING", 
-        scheduled_for=today
-    )
-    
-    count = reminders.count()
-    print(f"--- [Scheduler] Found {count} reminders due today ---")
+    logger.info("Scheduler triggered: today=%s", today)
+    print(f"[Scheduler] trigger_due_service_reminders running for {today}")
 
-    for r in reminders:
-        print(f"--- [Scheduler] Triggering task for ID {r.id} ---")
-        send_service_reminder.delay(r.id)
+    reminder_ids = list(
+        ServiceReminder.objects
+        .filter(
+            status="PENDING",
+            scheduled_for=today,
+        )
+        .values_list("id", flat=True)
+    )
+
+    if not reminder_ids:
+        logger.info("No reminders due today")
+        return
+
+    for reminder_id in reminder_ids:
+        logger.info("Triggering reminder %s", reminder_id)
+        send_service_reminder.delay(reminder_id)
