@@ -14,6 +14,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+
+# Repo-root .env (same folder as docker-compose.yml); then cwd/backend overrides
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_REPO_ROOT / ".env")
 load_dotenv()
 import dj_database_url
 

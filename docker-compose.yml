@@ -1,5 +1,9 @@
+# Default: app + Redis connect to Postgres on the HOST (see .env POSTGRES_HOST).
+# Optional bundled Postgres: docker compose --profile bundled-db up -d
+
 services:
   db:
+    profiles: ["bundled-db"]
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -8,7 +12,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Tuned for 1GB server
     command: >
       postgres
         -c shared_buffers=64MB
@@ -47,19 +50,17 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.production
+      - .env
     environment:
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
           memory: 256M
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -68,19 +69,17 @@ services:
     command: sh -c "cd backend && celery -A config.celery_app:app worker -l info --concurrency=2 --max-tasks-per-child=100"
     restart: unless-stopped
     env_file:
-      - .env.production
+      - .env
     environment:
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
           memory: 200M
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -89,19 +88,17 @@ services:
     command: sh -c "cd backend && celery -A config.celery_app:app beat -l info --scheduler celery.beat:PersistentScheduler"
     restart: unless-stopped
     env_file:
-      - .env.production
+      - .env
     environment:
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
           memory: 100M
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 

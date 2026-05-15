@@ -14,8 +14,7 @@ local_settings.py
 # Environment
 venv/
 ENV/
-.env
-.env.*
+.env.local
 
 # OS
 .DS_Store
@@ -45,3 +44,5 @@ node_modules
 
 # Ignore Jupyter Notebooks checkpoints
 .ipynb_checkpoints/
+.venv/
+.env
